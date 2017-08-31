@@ -9,9 +9,9 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.view.Menu;
 import android.view.View;
 import android.widget.ProgressBar;
+import android.widget.RadioGroup;
 import android.widget.TextView;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -50,6 +50,9 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
     private RestaurantAdapter adapter;
     private ProgressBar progressBar;
     private TextView emptyTv;
+    private RadioGroup sortGroup;
+    private Places places = null;
+    private Location currentLocation;
 
     @Override
     protected int getLayout() {
@@ -61,10 +64,21 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
         super.onCreate(savedInstanceState);
         progressBar = (ProgressBar) findViewById(R.id.progress_bar);
         emptyTv = (TextView) findViewById(R.id.tv_empty);
+        sortGroup = (RadioGroup) findViewById(R.id.rd_grp);
         setupRecyclerView();
         showLoading();
         rxLocProvider = new ReactiveLocationProvider(this);
         setupGoogleApiClient();
+        findViewById(R.id.btn_sort).setOnClickListener(v -> {
+            if (sortGroup.getVisibility() == View.VISIBLE) {
+                sortGroup.setVisibility(View.GONE);
+            } else {
+                sortGroup.setVisibility(View.VISIBLE);
+            }
+        });
+        sortGroup.setOnCheckedChangeListener((group, checkedId) -> {
+            sortGroup.setVisibility(View.GONE);
+        });
     }
 
     private void setupRecyclerView() {
@@ -165,7 +179,6 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
         NetworkClient.instance().getPlaces(s, "restaurant", 500)
                 .subscribe(res -> {
                     JsonObject object = res.body();
-                    Places places = null;
                     try {
                         places = new Places(new LatLng(19.121807, 72.908256), new JSONObject(object.toString()));
                         Collections.sort(places.getPlaceList(), new Comparator<Place>() {
@@ -187,12 +200,6 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
                 }, error -> {
                     error.printStackTrace();
                 });
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.main_menu, menu);
-        return super.onCreateOptionsMenu(menu);
     }
 
     private void showList() {

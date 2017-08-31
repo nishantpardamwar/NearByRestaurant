@@ -3,7 +3,49 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:orientation="vertical"
     tools:context="nishant.nearbyrestaurants.ui.activities.MainActivity">
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="right"
+        android:layout_marginRight="10dp"
+        android:layout_marginTop="5dp"
+        android:animateLayoutChanges="true"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <android.support.v7.widget.AppCompatImageView
+            android:id="@+id/btn_sort"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_sort_black_48dp" />
+
+        <RadioGroup
+            android:id="@+id/rd_grp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <RadioButton
+                android:id="@+id/rdo_distance"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checked="true"
+                android:text="By Distance" />
+
+            <RadioButton
+                android:id="@+id/rdo_rating"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="By Rating" />
+
+        </RadioGroup>
+
+    </LinearLayout>
 
     <include layout="@layout/component_recycler_view" />
 
