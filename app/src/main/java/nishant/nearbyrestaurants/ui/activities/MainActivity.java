@@ -10,11 +10,11 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.RadioGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -44,6 +44,8 @@ import nishant.nearbyrestaurants.ui.adapters.RestaurantAdapter;
 import nishant.nearbyrestaurants.utils.Functions;
 import pl.charmas.android.reactivelocation.ReactiveLocationProvider;
 import rx.Observable;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.schedulers.Schedulers;
 
 public class MainActivity extends BaseActivity implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
 
@@ -139,11 +141,7 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
         if (!Functions.isLocationEnabled(this)) {
             enableLocationService();
         } else {
-            getCurrentLocation().subscribe(location -> {
-                loadNearByPlaces(location);
-            }, error -> {
-                error.printStackTrace();
-            });
+            startFetchingPlaces();
         }
     }
 
@@ -169,8 +167,9 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
         }
     }
 
-    private Observable<Location> getCurrentLocation() {
-        return Observable.create(subscriber -> {
+    private void startFetchingPlaces() {
+        showLoading("Detecting your location, please wait...");
+        Observable<Location> observable = Observable.create(subscriber -> {
             LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
             Location lastKnowLocation = lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
             if (lastKnowLocation != null && Math.abs(lastKnowLocation.getTime() - System.currentTimeMillis()) < TimeUnit.MINUTES.toMillis(10)) {
@@ -192,24 +191,43 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
                         });
             }
         });
+        observable.subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(location -> {
+                    loadNearByPlaces(location);
+                }, error -> {
+                    Toast.makeText(this, "Unable to get your location, please retry",
+                            Toast.LENGTH_SHORT).show();
+                });
     }
 
     private void loadNearByPlaces(Location location) {
+        showLoading("Fetching nearby Restaurants, please wait...");
         String locString = location.getLatitude() + "," + location.getLongitude();
-        NetworkClient.instance().getPlaces(locString, "restaurant", 10000)
-                .subscribe(res -> {
-                    JsonObject object = res.body();
-                    try {
-                        places = new Places(new LatLng(location.getLatitude(), location.getLongitude()),
-                                new JSONObject(object.toString()));
-                        Collections.sort(places.getPlaceList(), sortByDistance);
-                        adapter.setNewList(places.getPlaceList());
-                        showList();
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
-                }, error -> {
-                    error.printStackTrace();
+        Observable<Places> observable = Observable.create(subscriber -> {
+            NetworkClient.instance().getPlaces(locString, "restaurant", 10000)
+                    .subscribeOn(Schedulers.immediate())
+                    .observeOn(Schedulers.immediate())
+                    .subscribe(res -> {
+                        JsonObject object = res.body();
+                        try {
+                            places = new Places(new LatLng(location.getLatitude(), location.getLongitude()),
+                                    new JSONObject(object.toString()));
+                            Collections.sort(places.getPlaceList(), sortByDistance);
+                            subscriber.onNext(places);
+                            subscriber.onCompleted();
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                    }, error -> {
+                        error.printStackTrace();
+                    });
+        });
+        observable.subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(places -> {
+                    adapter.setNewList(places.getPlaceList());
+                    showList();
                 });
     }
 
@@ -217,11 +235,7 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == 1000 && resultCode == RESULT_OK) {
-            getCurrentLocation().subscribe(location -> {
-                loadNearByPlaces(location);
-            }, error -> {
-                error.printStackTrace();
-            });
+            startFetchingPlaces();
         }
     }
 
@@ -230,11 +244,7 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
         final LocationSettingsStates state = result.getLocationSettingsStates();
         switch (status.getStatusCode()) {
             case LocationSettingsStatusCodes.SUCCESS:
-                getCurrentLocation().subscribe(location -> {
-                    loadNearByPlaces(location);
-                }, error -> {
-                    error.printStackTrace();
-                });
+                startFetchingPlaces();
                 break;
             case LocationSettingsStatusCodes.RESOLUTION_REQUIRED:
                 // Location settings are not satisfied. But could be fixed by showing the user
@@ -260,9 +270,10 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
         recyclerView.setVisibility(View.VISIBLE);
     }
 
-    private void showLoading() {
-        emptyTv.setVisibility(View.GONE);
+    private void showLoading(String msg) {
         recyclerView.setVisibility(View.GONE);
+        emptyTv.setText(msg);
+        emptyTv.setVisibility(View.VISIBLE);
         progressBar.setVisibility(View.VISIBLE);
     }
 

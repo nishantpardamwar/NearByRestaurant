@@ -10,8 +10,6 @@ import retrofit2.Retrofit;
 import retrofit2.adapter.rxjava.RxJavaCallAdapterFactory;
 import retrofit2.converter.gson.GsonConverterFactory;
 import rx.Observable;
-import rx.android.schedulers.AndroidSchedulers;
-import rx.schedulers.Schedulers;
 
 /**
  * Created by nishant pardamwar on 20/5/17.
@@ -48,7 +46,6 @@ public class NetworkClient {
     }
 
     public Observable<Response<JsonObject>> getPlaces(String location, String type, int radius) {
-        return apis.getPlaces(location, type, radius, RetrofitInterface.API_KEY).subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread());
+        return apis.getPlaces(location, type, radius, RetrofitInterface.API_KEY);
     }
 }
