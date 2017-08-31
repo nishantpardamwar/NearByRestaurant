@@ -41,6 +41,7 @@ public class RestaurantAdapter extends RecyclerView.Adapter<RestaurantAdapter.Vi
         holder.placeName.setText(list.get(position).getName());
         holder.placeVicinity.setText(list.get(position).getVicinity());
         holder.placeRating.setText(list.get(position).getRating());
+        holder.placeDistance.setText(String.format("%.2f", list.get(position).getDistance()) + " km");
 
         String iconUrl = list.get(position).getIconUrl();
         if (Functions.isStringValid(iconUrl)) {
@@ -61,12 +62,13 @@ public class RestaurantAdapter extends RecyclerView.Adapter<RestaurantAdapter.Vi
     }
 
     public class ViewHolder extends RecyclerView.ViewHolder {
-        private TextView placeName, placeVicinity, placeRating;
+        private TextView placeName, placeVicinity, placeRating, placeDistance;
         private ImageView placeIcon;
 
         public ViewHolder(View itemView) {
             super(itemView);
             placeName = (TextView) itemView.findViewById(R.id.tv_place_name);
+            placeDistance = (TextView) itemView.findViewById(R.id.tv_place_distance);
             placeVicinity = (TextView) itemView.findViewById(R.id.tv_place_vicinity);
             placeRating = (TextView) itemView.findViewById(R.id.tv_place_rating);
             placeIcon = (ImageView) itemView.findViewById(R.id.tv_place_icon);

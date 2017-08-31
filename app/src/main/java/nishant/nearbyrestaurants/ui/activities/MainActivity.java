@@ -9,7 +9,10 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.view.Menu;
 import android.view.View;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -19,15 +22,19 @@ import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.LocationSettingsRequest;
 import com.google.android.gms.location.LocationSettingsStates;
 import com.google.android.gms.location.LocationSettingsStatusCodes;
+import com.google.android.gms.maps.model.LatLng;
 import com.google.gson.JsonObject;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.concurrent.TimeUnit;
 
 import nishant.nearbyrestaurants.R;
+import nishant.nearbyrestaurants.models.Place;
 import nishant.nearbyrestaurants.models.Places;
 import nishant.nearbyrestaurants.network.NetworkClient;
 import nishant.nearbyrestaurants.ui.adapters.RestaurantAdapter;
@@ -41,6 +48,8 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
     private ReactiveLocationProvider rxLocProvider;
     private RecyclerView recyclerView;
     private RestaurantAdapter adapter;
+    private ProgressBar progressBar;
+    private TextView emptyTv;
 
     @Override
     protected int getLayout() {
@@ -50,7 +59,10 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        progressBar = (ProgressBar) findViewById(R.id.progress_bar);
+        emptyTv = (TextView) findViewById(R.id.tv_empty);
         setupRecyclerView();
+        showLoading();
         rxLocProvider = new ReactiveLocationProvider(this);
         setupGoogleApiClient();
     }
@@ -148,20 +160,56 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
     }
 
     private void loadNearByPlaces(Location location) {
+
         String s = "19.121807,72.908256";
         NetworkClient.instance().getPlaces(s, "restaurant", 500)
                 .subscribe(res -> {
                     JsonObject object = res.body();
                     Places places = null;
                     try {
-                        places = new Places(new JSONObject(object.toString()));
+                        places = new Places(new LatLng(19.121807, 72.908256), new JSONObject(object.toString()));
+                        Collections.sort(places.getPlaceList(), new Comparator<Place>() {
+                            @Override
+                            public int compare(Place o1, Place o2) {
+                                if (o1.getDistance() > o2.getDistance())
+                                    return 1;
+                                else if (o1.getDistance() < o2.getDistance())
+                                    return -1;
+                                else
+                                    return 0;
+                            }
+                        });
                         adapter.setNewList(places.getPlaceList());
-                        recyclerView.setVisibility(View.VISIBLE);
+                        showList();
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
                 }, error -> {
                     error.printStackTrace();
                 });
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.main_menu, menu);
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    private void showList() {
+        progressBar.setVisibility(View.GONE);
+        emptyTv.setVisibility(View.GONE);
+        recyclerView.setVisibility(View.VISIBLE);
+    }
+
+    private void showLoading() {
+        emptyTv.setVisibility(View.GONE);
+        recyclerView.setVisibility(View.GONE);
+        progressBar.setVisibility(View.VISIBLE);
+    }
+
+    private void showEmptyMsg() {
+        recyclerView.setVisibility(View.GONE);
+        progressBar.setVisibility(View.GONE);
+        emptyTv.setVisibility(View.VISIBLE);
     }
 }

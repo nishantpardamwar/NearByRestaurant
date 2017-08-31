@@ -9,12 +9,18 @@ public class Place {
     private String rating;
     private String vicinity;
     private String iconUrl;
+    private double distance;
 
     private Place(Builder builder) {
         name = builder.name;
         rating = builder.rating;
         vicinity = builder.vicinity;
         iconUrl = builder.iconUrl;
+        distance = builder.distance;
+    }
+
+    public double getDistance() {
+        return distance;
     }
 
     public String getName() {
@@ -39,6 +45,7 @@ public class Place {
         private String rating;
         private String vicinity;
         private String iconUrl;
+        private double distance;
 
         public Builder() {
         }
@@ -60,6 +67,11 @@ public class Place {
 
         public Builder iconUrl(String val) {
             iconUrl = val;
+            return this;
+        }
+
+        public Builder distance(double val) {
+            distance = val;
             return this;
         }
 
