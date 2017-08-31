@@ -36,7 +36,7 @@ public abstract class BaseActivity extends AppCompatActivity {
         fm = getSupportFragmentManager();
     }
 
-    private void checkPermission() {
+    protected void checkPermission() {
         try {
             int currentapiVersion = Build.VERSION.SDK_INT;
             if (currentapiVersion >= Build.VERSION_CODES.M) {

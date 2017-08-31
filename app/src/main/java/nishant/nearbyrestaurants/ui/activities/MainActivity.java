@@ -11,10 +11,11 @@ import android.support.annotation.Nullable;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
+import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.RadioGroup;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -54,10 +55,12 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
     private RecyclerView recyclerView;
     private RestaurantAdapter adapter;
     private ProgressBar progressBar;
+    private Button btnRetry;
     private TextView emptyTv;
     private RadioGroup sortGroup;
     private Places places = null;
     private Location currentLocation;
+    private ImageView btnRefresh;
     private Comparator<Place> sortByDistance = (o1, o2) -> {
         if (o1.getDistance() > o2.getDistance())
             return 1;
@@ -85,6 +88,7 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
         else if (r1 == null) return 1;
         else return -1;
     };
+    private Comparator<Place> currentComparator = sortByDistance;
 
     @Override
     protected int getLayout() {
@@ -96,10 +100,18 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
         super.onCreate(savedInstanceState);
         progressBar = (ProgressBar) findViewById(R.id.progress_bar);
         emptyTv = (TextView) findViewById(R.id.tv_empty);
+        btnRetry = (Button) findViewById(R.id.btn_retry);
         sortGroup = (RadioGroup) findViewById(R.id.rd_grp);
         setupRecyclerView();
         rxLocProvider = new ReactiveLocationProvider(this);
         setupGoogleApiClient();
+        btnRefresh = (ImageView) findViewById(R.id.btn_refresh);
+        btnRefresh.setOnClickListener(v -> {
+            if (mGoogleApiClient.isConnected())
+                startFetchingPlaces();
+            else
+                mGoogleApiClient.connect();
+        });
         findViewById(R.id.btn_sort).setOnClickListener(v -> {
             if (sortGroup.getVisibility() == View.VISIBLE) {
                 sortGroup.setVisibility(View.GONE);
@@ -110,13 +122,17 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
         sortGroup.setOnCheckedChangeListener((group, checkedId) -> {
             sortGroup.setVisibility(View.GONE);
             if (places != null)
-                if (checkedId == R.id.rdo_distance) {
-                    Collections.sort(places.getPlaceList(), sortByDistance);
-                    adapter.notifyDataSetChanged();
-                } else {
-                    Collections.sort(places.getPlaceList(), sortByRating);
-                    adapter.notifyDataSetChanged();
-                }
+                if (checkedId == R.id.rdo_distance)
+                    currentComparator = sortByDistance;
+                else
+                    currentComparator = sortByDistance;
+            changeSorting();
+        });
+        btnRetry.setOnClickListener(v -> {
+            if (mGoogleApiClient.isConnected())
+                startFetchingPlaces();
+            else
+                mGoogleApiClient.connect();
         });
     }
 
@@ -134,6 +150,18 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
                 .addOnConnectionFailedListener(this)
                 .build();
         mGoogleApiClient.connect();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        mGoogleApiClient.connect();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        mGoogleApiClient.disconnect();
     }
 
     @Override
@@ -168,6 +196,7 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
     }
 
     private void startFetchingPlaces() {
+        btnRefresh.setVisibility(View.GONE);
         showLoading("Detecting your location, please wait...");
         Observable<Location> observable = Observable.create(subscriber -> {
             LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
@@ -196,13 +225,12 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
                 .subscribe(location -> {
                     loadNearByPlaces(location);
                 }, error -> {
-                    Toast.makeText(this, "Unable to get your location, please retry",
-                            Toast.LENGTH_SHORT).show();
+                    showRetry("Unable to get your location, please try again");
                 });
     }
 
     private void loadNearByPlaces(Location location) {
-        showLoading("Fetching nearby Restaurants, please wait...");
+        showLoading("Searching nearby Restaurants, please wait...");
         String locString = location.getLatitude() + "," + location.getLongitude();
         Observable<Places> observable = Observable.create(subscriber -> {
             NetworkClient.instance().getPlaces(locString, "restaurant", 10000)
@@ -213,21 +241,30 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
                         try {
                             places = new Places(new LatLng(location.getLatitude(), location.getLongitude()),
                                     new JSONObject(object.toString()));
-                            Collections.sort(places.getPlaceList(), sortByDistance);
+                            Collections.sort(places.getPlaceList(), currentComparator);
                             subscriber.onNext(places);
                             subscriber.onCompleted();
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }
                     }, error -> {
-                        error.printStackTrace();
+                        subscriber.onError(error);
                     });
         });
         observable.subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(places -> {
                     adapter.setNewList(places.getPlaceList());
-                    showList();
+                    if (places.getPlaceList().size() == 0)
+                        showRetry("Couldn't find any nearby restaurant");
+                    else
+                        showList();
+                    btnRefresh.setVisibility(View.VISIBLE);
+                }, error -> {
+                    if (!Functions.isNetworkAvailable(this)) {
+                        showRetry("No internet connection available");
+                    } else
+                        showRetry("Some unexpected error occurred, please try again");
                 });
     }
 
@@ -264,22 +301,43 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
         }
     }
 
+    private void changeSorting() {
+        if (places != null && places.getPlaceList().size() > 0) {
+            showLoading("Please wait...");
+            Observable.create(subscriber -> {
+                Collections.sort(places.getPlaceList(), currentComparator);
+                subscriber.onNext(places);
+                subscriber.onCompleted();
+            }).subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe(places -> {
+                        showList();
+                        adapter.notifyDataSetChanged();
+                    });
+        }
+    }
+
+
     private void showList() {
         progressBar.setVisibility(View.GONE);
         emptyTv.setVisibility(View.GONE);
+        btnRetry.setVisibility(View.GONE);
         recyclerView.setVisibility(View.VISIBLE);
     }
 
     private void showLoading(String msg) {
         recyclerView.setVisibility(View.GONE);
+        btnRetry.setVisibility(View.GONE);
         emptyTv.setText(msg);
         emptyTv.setVisibility(View.VISIBLE);
         progressBar.setVisibility(View.VISIBLE);
     }
 
-    private void showEmptyMsg() {
+    private void showRetry(String msg) {
         recyclerView.setVisibility(View.GONE);
         progressBar.setVisibility(View.GONE);
+        btnRetry.setVisibility(View.VISIBLE);
+        emptyTv.setText(msg);
         emptyTv.setVisibility(View.VISIBLE);
     }
 }

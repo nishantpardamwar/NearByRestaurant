@@ -16,7 +16,15 @@
         android:gravity="center"
         android:orientation="horizontal">
 
-        <android.support.v7.widget.AppCompatImageView
+        <ImageView
+            android:id="@+id/btn_refresh"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_marginRight="10dp"
+            android:src="@drawable/ic_refresh_black_48dp"
+            android:visibility="gone" />
+
+        <ImageView
             android:id="@+id/btn_sort"
             android:layout_width="32dp"
             android:layout_height="32dp"

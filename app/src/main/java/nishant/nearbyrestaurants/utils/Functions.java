@@ -2,6 +2,8 @@ package nishant.nearbyrestaurants.utils;
 
 import android.content.Context;
 import android.location.LocationManager;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 
 /**
  * Created by nishant pardamwar on 31/8/17.
@@ -31,5 +33,13 @@ public class Functions {
         }
         return str.trim() != "";
 
+    }
+
+    public static boolean isNetworkAvailable(Context context) {
+        ConnectivityManager connectivityManager
+                = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+        //return activeNetworkInfo != null && activeNetworkInfo.isConnected() && Connectivity.isConnectedFast(context);
+        return activeNetworkInfo != null && activeNetworkInfo.isConnected();
     }
 }
