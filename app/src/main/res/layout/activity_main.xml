@@ -3,6 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="nishant.nearbyrestaurants.MainActivity">
+    tools:context="nishant.nearbyrestaurants.ui.activities.MainActivity">
+
+    <include layout="@layout/component_recycler_view" />
 
 </LinearLayout>

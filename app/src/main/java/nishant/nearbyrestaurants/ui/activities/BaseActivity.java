@@ -1,4 +1,4 @@
-package nishant.nearbyrestaurants;
+package nishant.nearbyrestaurants.ui.activities;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
