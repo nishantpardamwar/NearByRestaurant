@@ -53,6 +53,33 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
     private RadioGroup sortGroup;
     private Places places = null;
     private Location currentLocation;
+    private Comparator<Place> sortByDistance = (o1, o2) -> {
+        if (o1.getDistance() > o2.getDistance())
+            return 1;
+        else if (o1.getDistance() < o2.getDistance())
+            return -1;
+        else
+            return 0;
+    };
+    private Comparator<Place> sortByRating = (o1, o2) -> {
+        Integer r1 = null, r2 = null;
+        try {
+            r1 = Integer.valueOf(o1.getRating());
+        } catch (Exception e) {
+        }
+        try {
+            r2 = Integer.valueOf(o2.getRating());
+        } catch (Exception e) {
+        }
+
+        if (r1 != null && r2 != null) {
+            if (r1 < r2) return 1;
+            else if (r1 > r2) return -1;
+            else return 0;
+        } else if (r1 == null && r2 == null) return 0;
+        else if (r1 == null) return 1;
+        else return -1;
+    };
 
     @Override
     protected int getLayout() {
@@ -66,7 +93,6 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
         emptyTv = (TextView) findViewById(R.id.tv_empty);
         sortGroup = (RadioGroup) findViewById(R.id.rd_grp);
         setupRecyclerView();
-        showLoading();
         rxLocProvider = new ReactiveLocationProvider(this);
         setupGoogleApiClient();
         findViewById(R.id.btn_sort).setOnClickListener(v -> {
@@ -78,6 +104,14 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
         });
         sortGroup.setOnCheckedChangeListener((group, checkedId) -> {
             sortGroup.setVisibility(View.GONE);
+            if (places != null)
+                if (checkedId == R.id.rdo_distance) {
+                    Collections.sort(places.getPlaceList(), sortByDistance);
+                    adapter.notifyDataSetChanged();
+                } else {
+                    Collections.sort(places.getPlaceList(), sortByRating);
+                    adapter.notifyDataSetChanged();
+                }
         });
     }
 
@@ -174,24 +208,13 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
     }
 
     private void loadNearByPlaces(Location location) {
-
         String s = "19.121807,72.908256";
         NetworkClient.instance().getPlaces(s, "restaurant", 500)
                 .subscribe(res -> {
                     JsonObject object = res.body();
                     try {
                         places = new Places(new LatLng(19.121807, 72.908256), new JSONObject(object.toString()));
-                        Collections.sort(places.getPlaceList(), new Comparator<Place>() {
-                            @Override
-                            public int compare(Place o1, Place o2) {
-                                if (o1.getDistance() > o2.getDistance())
-                                    return 1;
-                                else if (o1.getDistance() < o2.getDistance())
-                                    return -1;
-                                else
-                                    return 0;
-                            }
-                        });
+                        Collections.sort(places.getPlaceList(), sortByDistance);
                         adapter.setNewList(places.getPlaceList());
                         showList();
                     } catch (JSONException e) {
