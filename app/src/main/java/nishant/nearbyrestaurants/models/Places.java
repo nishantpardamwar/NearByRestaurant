@@ -1,5 +1,7 @@
 package nishant.nearbyrestaurants.models;
 
+import android.location.Location;
+
 import com.google.android.gms.maps.model.LatLng;
 
 import org.json.JSONArray;
@@ -8,8 +10,6 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import nishant.nearbyrestaurants.utils.Functions;
 
 /**
  * Created by nishant pardamwar on 31/8/17.
@@ -37,12 +37,14 @@ public class Places {
                         JSONObject obj = array.getJSONObject(i);
                         double lat = obj.getJSONObject("geometry").getJSONObject("location").getDouble("lat");
                         double lng = obj.getJSONObject("geometry").getJSONObject("location").getDouble("lng");
+                        float[] distance = new float[1];
+                        Location.distanceBetween(latLng.latitude, latLng.longitude, lat, lng, distance);
                         placeList.add(new Place.Builder()
                                 .name(!obj.isNull("name") ? obj.getString("name") : "N/A")
                                 .rating(!obj.isNull("rating") ? obj.getInt("rating") + "" : "Not Available")
                                 .vicinity(!obj.isNull("vicinity") ? obj.getString("vicinity") : "N/A")
                                 .iconUrl(!obj.isNull("icon") ? obj.getString("icon") : null)
-                                .distance(Functions.distance(latLng.latitude, latLng.longitude, lat, lng))
+                                .distance(distance[0])
                                 .build()
                         );
                     }

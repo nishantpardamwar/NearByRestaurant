@@ -36,12 +36,18 @@ public class RestaurantAdapter extends RecyclerView.Adapter<RestaurantAdapter.Vi
                 .inflate(R.layout.vh_place, parent, false));
     }
 
+
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
         holder.placeName.setText(list.get(position).getName());
         holder.placeVicinity.setText(list.get(position).getVicinity());
         holder.placeRating.setText(list.get(position).getRating());
-        holder.placeDistance.setText(String.format("%.2f", list.get(position).getDistance()) + " km");
+        double dist = list.get(position).getDistance();
+        if (dist < 1000) {
+            holder.placeDistance.setText(String.format("%.2f", list.get(position).getDistance()) + " m");
+        } else {
+            holder.placeDistance.setText(String.format("%.2f", list.get(position).getDistance() / 1000) + " km");
+        }
 
         String iconUrl = list.get(position).getIconUrl();
         if (Functions.isStringValid(iconUrl)) {
