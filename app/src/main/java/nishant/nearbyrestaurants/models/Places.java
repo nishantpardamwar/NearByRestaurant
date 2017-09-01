@@ -28,6 +28,10 @@ public class Places {
         return placeList;
     }
 
+    public void setPlaceList(List<Place> placeList) {
+        this.placeList = placeList;
+    }
+
     private void parseJson(LatLng latLng, JSONObject object) {
         if (object != null) {
             try {

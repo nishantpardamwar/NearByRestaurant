@@ -1,10 +1,39 @@
 package nishant.nearbyrestaurants.models;
 
+import java.util.Comparator;
+
 /**
  * Created by nishant pardamwar on 31/8/17.
  */
 
 public class Place {
+    public static final Comparator<Place> SORT_BY_DISTANCE = (o1, o2) -> {
+        if (o1.getDistance() > o2.getDistance())
+            return 1;
+        else if (o1.getDistance() < o2.getDistance())
+            return -1;
+        else
+            return 0;
+    };
+    public static final Comparator<Place> SORT_BY_RATING = (o1, o2) -> {
+        Integer r1 = null, r2 = null;
+        try {
+            r1 = Integer.valueOf(o1.getRating());
+        } catch (Exception e) {
+        }
+        try {
+            r2 = Integer.valueOf(o2.getRating());
+        } catch (Exception e) {
+        }
+
+        if (r1 != null && r2 != null) {
+            if (r1 < r2) return 1;
+            else if (r1 > r2) return -1;
+            else return 0;
+        } else if (r1 == null && r2 == null) return 0;
+        else if (r1 == null) return 1;
+        else return -1;
+    };
     private String name;
     private String rating;
     private String vicinity;

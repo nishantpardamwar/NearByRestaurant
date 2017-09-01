@@ -65,35 +65,8 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
     private Places places = null;
     private Location currentLocation;
     private ImageView btnRefresh;
-    private Comparator<Place> sortByDistance = (o1, o2) -> {
-        if (o1.getDistance() > o2.getDistance())
-            return 1;
-        else if (o1.getDistance() < o2.getDistance())
-            return -1;
-        else
-            return 0;
-    };
-    private Comparator<Place> sortByRating = (o1, o2) -> {
-        Integer r1 = null, r2 = null;
-        try {
-            r1 = Integer.valueOf(o1.getRating());
-        } catch (Exception e) {
-        }
-        try {
-            r2 = Integer.valueOf(o2.getRating());
-        } catch (Exception e) {
-        }
-
-        if (r1 != null && r2 != null) {
-            if (r1 < r2) return 1;
-            else if (r1 > r2) return -1;
-            else return 0;
-        } else if (r1 == null && r2 == null) return 0;
-        else if (r1 == null) return 1;
-        else return -1;
-    };
-    private Comparator<Place> currentComparator = sortByDistance;
-    private Subscription sortSubs, locSettingSubs, currLocSubs, newLocSubs,
+    private Comparator<Place> sortBy = Place.SORT_BY_DISTANCE;
+    private Subscription locSettingSubs, currLocSubs, newLocSubs,
             placesSubs, placesApiSubs;
 
     @Override
@@ -129,10 +102,10 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
             sortGroup.setVisibility(View.GONE);
             if (places != null)
                 if (checkedId == R.id.rdo_distance)
-                    currentComparator = sortByDistance;
+                    sortBy = Place.SORT_BY_DISTANCE;
                 else
-                    currentComparator = sortByDistance;
-            changeSorting();
+                    sortBy = Place.SORT_BY_RATING;
+            startFetchingPlaces();
         });
         btnRetry.setOnClickListener(v -> {
             if (mGoogleApiClient.isConnected())
@@ -259,7 +232,8 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
                         try {
                             places = new Places(new LatLng(location.getLatitude(), location.getLongitude()),
                                     new JSONObject(object.toString()));
-                            Collections.sort(places.getPlaceList(), currentComparator);
+                            Collections.sort(places.getPlaceList(), sortBy);
+                            places.setPlaceList(places.getPlaceList().subList(0, 10));
                             subscriber.onNext(places);
                             subscriber.onCompleted();
                         } catch (JSONException e) {
@@ -320,25 +294,6 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
                 break;
         }
     }
-
-    private void changeSorting() {
-        if (places != null && places.getPlaceList().size() > 0) {
-            showLoading("Please wait...");
-            if (sortSubs != null)
-                sortSubs.unsubscribe();
-            sortSubs = Observable.create(subscriber -> {
-                Collections.sort(places.getPlaceList(), currentComparator);
-                subscriber.onNext(places);
-                subscriber.onCompleted();
-            }).subscribeOn(Schedulers.io())
-                    .observeOn(AndroidSchedulers.mainThread())
-                    .subscribe(places -> {
-                        showList();
-                        adapter.notifyDataSetChanged();
-                    });
-        }
-    }
-
 
     private void showList() {
         progressBar.setVisibility(View.GONE);
