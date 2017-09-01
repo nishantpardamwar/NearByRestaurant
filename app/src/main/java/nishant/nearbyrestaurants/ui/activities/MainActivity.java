@@ -45,6 +45,7 @@ import nishant.nearbyrestaurants.ui.adapters.RestaurantAdapter;
 import nishant.nearbyrestaurants.utils.Functions;
 import pl.charmas.android.reactivelocation.ReactiveLocationProvider;
 import rx.Observable;
+import rx.Subscription;
 import rx.android.schedulers.AndroidSchedulers;
 import rx.schedulers.Schedulers;
 
@@ -89,6 +90,8 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
         else return -1;
     };
     private Comparator<Place> currentComparator = sortByDistance;
+    private Subscription sortSubs, locSettingSubs, currLocSubs, newLocSubs,
+            placesSubs, placesApiSubs;
 
     @Override
     protected int getLayout() {
@@ -189,7 +192,9 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
             request.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
             LocationSettingsRequest settingsRequest = new LocationSettingsRequest.Builder()
                     .addLocationRequest(request).build();
-            rxLocProvider.checkLocationSettings(settingsRequest).subscribe(result -> {
+            if (locSettingSubs != null)
+                locSettingSubs.unsubscribe();
+            locSettingSubs = rxLocProvider.checkLocationSettings(settingsRequest).subscribe(result -> {
                 resolveLocationSettingResponse(result);
             });
         }
@@ -209,7 +214,9 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
                 request.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY).setNumUpdates(1)
                         .setFastestInterval(0)
                         .setInterval(0);
-                rxLocProvider.getUpdatedLocation(request)
+                if (newLocSubs != null)
+                    newLocSubs.unsubscribe();
+                newLocSubs = rxLocProvider.getUpdatedLocation(request)
                         .take(1)
                         .timeout(30, TimeUnit.SECONDS)
                         .subscribe(location -> {
@@ -220,7 +227,9 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
                         });
             }
         });
-        observable.subscribeOn(Schedulers.io())
+        if (currLocSubs != null)
+            currLocSubs.unsubscribe();
+        currLocSubs = observable.subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(location -> {
                     loadNearByPlaces(location);
@@ -233,7 +242,9 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
         showLoading("Searching nearby Restaurants, please wait...");
         String locString = location.getLatitude() + "," + location.getLongitude();
         Observable<Places> observable = Observable.create(subscriber -> {
-            NetworkClient.instance().getPlaces(locString, "restaurant", 10000)
+            if (placesApiSubs != null)
+                placesApiSubs.unsubscribe();
+            placesApiSubs = NetworkClient.instance().getPlaces(locString, "restaurant", 10000)
                     .subscribeOn(Schedulers.immediate())
                     .observeOn(Schedulers.immediate())
                     .subscribe(res -> {
@@ -251,7 +262,9 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
                         subscriber.onError(error);
                     });
         });
-        observable.subscribeOn(Schedulers.io())
+        if (placesSubs != null)
+            placesSubs.unsubscribe();
+        placesSubs = observable.subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(places -> {
                     adapter.setNewList(places.getPlaceList());
@@ -304,7 +317,9 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
     private void changeSorting() {
         if (places != null && places.getPlaceList().size() > 0) {
             showLoading("Please wait...");
-            Observable.create(subscriber -> {
+            if (sortSubs != null)
+                sortSubs.unsubscribe();
+            sortSubs = Observable.create(subscriber -> {
                 Collections.sort(places.getPlaceList(), currentComparator);
                 subscriber.onNext(places);
                 subscriber.onCompleted();
