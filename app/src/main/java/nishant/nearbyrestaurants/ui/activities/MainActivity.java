@@ -233,7 +233,8 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
                             places = new Places(new LatLng(location.getLatitude(), location.getLongitude()),
                                     new JSONObject(object.toString()));
                             Collections.sort(places.getPlaceList(), sortBy);
-                            places.setPlaceList(places.getPlaceList().subList(0, 10));
+                            if (places.getPlaceList().size() > 10)
+                                places.setPlaceList(places.getPlaceList().subList(0, 10));
                             subscriber.onNext(places);
                             subscriber.onCompleted();
                         } catch (JSONException e) {
