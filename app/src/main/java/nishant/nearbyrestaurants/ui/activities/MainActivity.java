@@ -1,13 +1,16 @@
 package nishant.nearbyrestaurants.ui.activities;
 
+import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentSender;
+import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
@@ -201,6 +204,10 @@ public class MainActivity extends BaseActivity implements GoogleApiClient.Connec
     }
 
     private void startFetchingPlaces() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            checkPermission();
+            return;
+        }
         btnRefresh.setVisibility(View.GONE);
         showLoading("Detecting your location, please wait...");
         Observable<Location> observable = Observable.create(subscriber -> {
